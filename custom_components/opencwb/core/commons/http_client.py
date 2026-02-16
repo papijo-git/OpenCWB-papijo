@@ -9,15 +9,19 @@ from .enums import ImageTypeEnum
 
 
 class HttpRequestBuilder:
-
-    URL_TEMPLATE_WITH_SUBDOMAINS = '{}://{}.{}/{}?Authorization={}&format=JSON&locationName={}&LocationName={}'
-    URL_TEMPLATE_WITH_SUBDOMAINS_WITH_LOCATIONID = '{}://{}.{}/{}?Authorization={}&format=JSON&locationId={}&locationName={}&LocationName={}'
-    URL_TEMPLATE_WITHOUT_SUBDOMAINS = '{}://{}/{}?Authorization={}&format=JSON&locationName={}&LocationName={}'
-    URL_TEMPLATE_WITHOUT_SUBDOMAINS_WITH_LOCATIONID = '{}://{}/{}?Authorization={}&format=JSON&locationId={}&locationName={}&LocationName={}'
+    URL_TEMPLATE_WITH_SUBDOMAINS = (
+        "{}://{}.{}/{}?Authorization={}&format=JSON&locationName={}&LocationName={}"
+    )
+    URL_TEMPLATE_WITH_SUBDOMAINS_WITH_LOCATIONID = "{}://{}.{}/{}?Authorization={}&format=JSON&locationId={}&locationName={}&LocationName={}"
+    URL_TEMPLATE_WITHOUT_SUBDOMAINS = (
+        "{}://{}/{}?Authorization={}&format=JSON&locationName={}&LocationName={}"
+    )
+    URL_TEMPLATE_WITHOUT_SUBDOMAINS_WITH_LOCATIONID = "{}://{}/{}?Authorization={}&format=JSON&locationId={}&locationName={}&LocationName={}"
 
     """
     A stateful HTTP URL, params and headers builder with a fluent interface
     """
+
     def __init__(self, root_uri_token, api_key, config, has_subdomains=True):
         assert isinstance(root_uri_token, str)
         self.root = root_uri_token
@@ -38,17 +42,17 @@ class HttpRequestBuilder:
         self._set_proxies()
 
     def _set_schema(self):
-        use_ssl = self.config['connection']['use_ssl']
-        self.schema = 'https' if use_ssl else 'http'
+        use_ssl = self.config["connection"]["use_ssl"]
+        self.schema = "https" if use_ssl else "http"
 
     def _set_subdomain(self):
         if self.has_subdomains:
-            st = self.config['subscription_type']
+            st = self.config["subscription_type"]
             self.subdomain = st.subdomain
 
     def _set_proxies(self):
-        if self.config['connection']['use_proxy']:
-            self.proxies = self.config['proxies']
+        if self.config["connection"]["use_proxy"]:
+            self.proxies = self.config["proxies"]
         else:
             self.proxies = {}
 
@@ -67,7 +71,7 @@ class HttpRequestBuilder:
         try:
             json.dumps(value)
         except TypeError:
-            raise ValueError('Header value is not JSON serializable')
+            raise ValueError("Header value is not JSON serializable")
         self.headers.update({key: value})
         return self
 
@@ -77,11 +81,11 @@ class HttpRequestBuilder:
         return self
 
     def with_api_key(self):
-        self.params['APPID'] = self.api_key
+        self.params["APPID"] = self.api_key
         return self
 
     def with_language(self):
-        self.params['lang'] = self.config['language']
+        self.params["lang"] = self.config["language"]
         return self
 
     def build(self):
@@ -91,33 +95,72 @@ class HttpRequestBuilder:
 
         if self.has_subdomains:
             if locationId:
-                return self.URL_TEMPLATE_WITH_SUBDOMAINS_WITH_LOCATIONID.format(
-                    self.schema, self.subdomain, self.root, self.path,
-                        self.api_key, locationId, locationName, locationName), \
-                            self.params, self.headers, self.proxies
+                return (
+                    self.URL_TEMPLATE_WITH_SUBDOMAINS_WITH_LOCATIONID.format(
+                        self.schema,
+                        self.subdomain,
+                        self.root,
+                        self.path,
+                        self.api_key,
+                        locationId,
+                        locationName,
+                        locationName,
+                    ),
+                    self.params,
+                    self.headers,
+                    self.proxies,
+                )
             else:
-                return self.URL_TEMPLATE_WITH_SUBDOMAINS.format(
-                    self.schema, self.subdomain, self.root, self.path,
-                        self.api_key, locationName, locationName), \
-                            self.params, self.headers, self.proxies
+                return (
+                    self.URL_TEMPLATE_WITH_SUBDOMAINS.format(
+                        self.schema,
+                        self.subdomain,
+                        self.root,
+                        self.path,
+                        self.api_key,
+                        locationName,
+                        locationName,
+                    ),
+                    self.params,
+                    self.headers,
+                    self.proxies,
+                )
         else:
             if locationId:
-                return self.URL_TEMPLATE_WITHOUT_SUBDOMAINS_WITH_LOCATIONID.format(
-                    self.schema, self.root, self.path,
-                        self.api_key, locationId, locationName, locationName), \
-                            self.params, self.headers, self.proxies
+                return (
+                    self.URL_TEMPLATE_WITHOUT_SUBDOMAINS_WITH_LOCATIONID.format(
+                        self.schema,
+                        self.root,
+                        self.path,
+                        self.api_key,
+                        locationId,
+                        locationName,
+                        locationName,
+                    ),
+                    self.params,
+                    self.headers,
+                    self.proxies,
+                )
             else:
-                return self.URL_TEMPLATE_WITHOUT_SUBDOMAINS.format(
-                    self.schema, self.root, self.path,
-                        self.api_key, locationName, locationName), \
-                            self.params, self.headers, self.proxies
+                return (
+                    self.URL_TEMPLATE_WITHOUT_SUBDOMAINS.format(
+                        self.schema,
+                        self.root,
+                        self.path,
+                        self.api_key,
+                        locationName,
+                        locationName,
+                    ),
+                    self.params,
+                    self.headers,
+                    self.proxies,
+                )
 
     def __repr__(self):
         return "<%s.%s>" % (__name__, self.__class__.__name__)
 
 
 class HttpClient:
-
     """
     An HTTP client encapsulating some config data and abstarcting away data raw retrieval
 
@@ -136,105 +179,164 @@ class HttpClient:
         self.api_key = api_key
         assert isinstance(config, dict)
         self.config = config
+        # --begin: force to use SSL connection
+        if "connection" in self.config:
+            self.config["connection"]["verify_ssl_certs"] = True
+        # --end
         assert isinstance(root_uri, str)
         self.root_uri = root_uri
         assert isinstance(admits_subdomains, bool)
         self.admits_subdomains = admits_subdomains
 
     def get_json(self, path, params=None, headers=None):
-        builder = HttpRequestBuilder(self.root_uri, self.api_key, self.config, has_subdomains=self.admits_subdomains)\
-            .with_path(path)\
-            .with_api_key()\
-            .with_language()\
-            .with_query_params(params if params is not None else dict())\
+        builder = (
+            HttpRequestBuilder(
+                self.root_uri,
+                self.api_key,
+                self.config,
+                has_subdomains=self.admits_subdomains,
+            )
+            .with_path(path)
+            .with_api_key()
+            .with_language()
+            .with_query_params(params if params is not None else dict())
             .with_headers(headers if headers is not None else dict())
+        )
         url, params, headers, proxies = builder.build()
         try:
-            resp = requests.get(url, params=params, headers=headers, proxies=proxies,
-                                timeout=self.config['connection']['timeout_secs'],
-                                verify=self.config['connection']['verify_ssl_certs'])
+            resp = requests.get(
+                url,
+                params=params,
+                headers=headers,
+                proxies=proxies,
+                timeout=self.config["connection"]["timeout_secs"],
+                verify=self.config["connection"]["verify_ssl_certs"],
+            )
         except requests.exceptions.SSLError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.ConnectionError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.Timeout:
-            raise exceptions.TimeoutError('API call timeouted')
+            raise exceptions.TimeoutError("API call timeouted")
         HttpClient.check_status_code(resp.status_code, resp.text)
         try:
             return resp.status_code, resp.json()
         except:
-            raise exceptions.ParseAPIResponseError('Impossible to parse API response data')
+            raise exceptions.ParseAPIResponseError(
+                "Impossible to parse API response data"
+            )
 
     def get_png(self, path, params=None, headers=None):
-        builder = HttpRequestBuilder(self.root_uri, self.api_key, self.config, has_subdomains=self.admits_subdomains)\
-            .with_path(path)\
-            .with_api_key()\
-            .with_language()\
-            .with_query_params(params if params is not None else dict())\
-            .with_headers(headers if headers is not None else dict())\
-            .with_header('Accept', ImageTypeEnum.PNG.mime_type)
+        builder = (
+            HttpRequestBuilder(
+                self.root_uri,
+                self.api_key,
+                self.config,
+                has_subdomains=self.admits_subdomains,
+            )
+            .with_path(path)
+            .with_api_key()
+            .with_language()
+            .with_query_params(params if params is not None else dict())
+            .with_headers(headers if headers is not None else dict())
+            .with_header("Accept", ImageTypeEnum.PNG.mime_type)
+        )
         url, params, headers, proxies = builder.build()
         try:
-            resp = requests.get(url, stream=True, params=params, headers=headers, proxies=proxies,
-                                timeout=self.config['connection']['timeout_secs'],
-                                verify=self.config['connection']['verify_ssl_certs'])
+            resp = requests.get(
+                url,
+                stream=True,
+                params=params,
+                headers=headers,
+                proxies=proxies,
+                timeout=self.config["connection"]["timeout_secs"],
+                verify=self.config["connection"]["verify_ssl_certs"],
+            )
         except requests.exceptions.SSLError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.ConnectionError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.Timeout:
-            raise exceptions.TimeoutError('API call timeouted')
+            raise exceptions.TimeoutError("API call timeouted")
         HttpClient.check_status_code(resp.status_code, resp.text)
         try:
             return resp.status_code, resp.content
         except:
-            raise exceptions.ParseAPIResponseError('Impossible to parse'
-                                                          'API response data')
+            raise exceptions.ParseAPIResponseError(
+                "Impossible to parseAPI response data"
+            )
 
     def get_geotiff(self, path, params=None, headers=None):
-        builder = HttpRequestBuilder(self.root_uri, self.api_key, self.config, has_subdomains=self.admits_subdomains)\
-            .with_path(path)\
-            .with_api_key()\
-            .with_language()\
-            .with_query_params(params if params is not None else dict())\
-            .with_headers(headers if headers is not None else dict())\
-            .with_header('Accept', ImageTypeEnum.GEOTIFF.mime_type)
+        builder = (
+            HttpRequestBuilder(
+                self.root_uri,
+                self.api_key,
+                self.config,
+                has_subdomains=self.admits_subdomains,
+            )
+            .with_path(path)
+            .with_api_key()
+            .with_language()
+            .with_query_params(params if params is not None else dict())
+            .with_headers(headers if headers is not None else dict())
+            .with_header("Accept", ImageTypeEnum.GEOTIFF.mime_type)
+        )
         url, params, headers, proxies = builder.build()
         try:
-            resp = requests.get(url, stream=True, params=params, headers=headers, proxies=proxies,
-                                timeout=self.config['connection']['timeout_secs'],
-                                verify=self.config['connection']['verify_ssl_certs'])
+            resp = requests.get(
+                url,
+                stream=True,
+                params=params,
+                headers=headers,
+                proxies=proxies,
+                timeout=self.config["connection"]["timeout_secs"],
+                verify=self.config["connection"]["verify_ssl_certs"],
+            )
         except requests.exceptions.SSLError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.ConnectionError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.Timeout:
-            raise exceptions.TimeoutError('API call timeouted')
+            raise exceptions.TimeoutError("API call timeouted")
         HttpClient.check_status_code(resp.status_code, resp.text)
         try:
             return resp.status_code, resp.content
         except:
-            raise exceptions.ParseAPIResponseError('Impossible to parse'
-                                                          'API response data')
+            raise exceptions.ParseAPIResponseError(
+                "Impossible to parseAPI response data"
+            )
 
     def post(self, path, params=None, data=None, headers=None):
-        builder = HttpRequestBuilder(self.root_uri, self.api_key, self.config, has_subdomains=self.admits_subdomains)\
-            .with_path(path)\
-            .with_api_key()\
-            .with_language()\
-            .with_query_params(params if params is not None else dict())\
+        builder = (
+            HttpRequestBuilder(
+                self.root_uri,
+                self.api_key,
+                self.config,
+                has_subdomains=self.admits_subdomains,
+            )
+            .with_path(path)
+            .with_api_key()
+            .with_language()
+            .with_query_params(params if params is not None else dict())
             .with_headers(headers if headers is not None else dict())
+        )
         url, params, headers, proxies = builder.build()
         try:
-            resp = requests.post(url, params=params, json=data, headers=headers, proxies=proxies,
-                                 timeout=self.config['connection']['timeout_secs'],
-                                 verify=self.config['connection']['verify_ssl_certs'])
+            resp = requests.post(
+                url,
+                params=params,
+                json=data,
+                headers=headers,
+                proxies=proxies,
+                timeout=self.config["connection"]["timeout_secs"],
+                verify=self.config["connection"]["verify_ssl_certs"],
+            )
         except requests.exceptions.SSLError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.ConnectionError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.Timeout:
-            raise exceptions.TimeoutError('API call timeouted')
+            raise exceptions.TimeoutError("API call timeouted")
         HttpClient.check_status_code(resp.status_code, resp.text)
         # this is a defense against OCWB API responses containing an empty body!
         try:
@@ -244,23 +346,36 @@ class HttpClient:
         return resp.status_code, json_data
 
     def put(self, path, params=None, data=None, headers=None):
-        builder = HttpRequestBuilder(self.root_uri, self.api_key, self.config, has_subdomains=self.admits_subdomains)\
-            .with_path(path)\
-            .with_api_key()\
-            .with_language()\
-            .with_query_params(params if params is not None else dict())\
+        builder = (
+            HttpRequestBuilder(
+                self.root_uri,
+                self.api_key,
+                self.config,
+                has_subdomains=self.admits_subdomains,
+            )
+            .with_path(path)
+            .with_api_key()
+            .with_language()
+            .with_query_params(params if params is not None else dict())
             .with_headers(headers if headers is not None else dict())
+        )
         url, params, headers, proxies = builder.build()
         try:
-            resp = requests.put(url, params=params, json=data, headers=headers, proxies=proxies,
-                                timeout=self.config['connection']['timeout_secs'],
-                                verify=self.config['connection']['verify_ssl_certs'])
+            resp = requests.put(
+                url,
+                params=params,
+                json=data,
+                headers=headers,
+                proxies=proxies,
+                timeout=self.config["connection"]["timeout_secs"],
+                verify=self.config["connection"]["verify_ssl_certs"],
+            )
         except requests.exceptions.SSLError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.ConnectionError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.Timeout:
-            raise exceptions.TimeoutError('API call timeouted')
+            raise exceptions.TimeoutError("API call timeouted")
         HttpClient.check_status_code(resp.status_code, resp.text)
         # this is a defense against OCWB API responses containing an empty body!
         try:
@@ -270,23 +385,36 @@ class HttpClient:
         return resp.status_code, json_data
 
     def delete(self, path, params=None, data=None, headers=None):
-        builder = HttpRequestBuilder(self.root_uri, self.api_key, self.config, has_subdomains=self.admits_subdomains)\
-            .with_path(path)\
-            .with_api_key()\
-            .with_language()\
-            .with_query_params(params if params is not None else dict())\
+        builder = (
+            HttpRequestBuilder(
+                self.root_uri,
+                self.api_key,
+                self.config,
+                has_subdomains=self.admits_subdomains,
+            )
+            .with_path(path)
+            .with_api_key()
+            .with_language()
+            .with_query_params(params if params is not None else dict())
             .with_headers(headers if headers is not None else dict())
+        )
         url, params, headers, proxies = builder.build()
         try:
-            resp = requests.delete(url, params=params, json=data, headers=headers, proxies=proxies,
-                                   timeout=self.config['connection']['timeout_secs'],
-                                   verify=self.config['connection']['verify_ssl_certs'])
+            resp = requests.delete(
+                url,
+                params=params,
+                json=data,
+                headers=headers,
+                proxies=proxies,
+                timeout=self.config["connection"]["timeout_secs"],
+                verify=self.config["connection"]["verify_ssl_certs"],
+            )
         except requests.exceptions.SSLError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.ConnectionError as e:
             raise exceptions.InvalidSSLCertificateError(str(e))
         except requests.exceptions.Timeout:
-            raise exceptions.TimeoutError('API call timeouted')
+            raise exceptions.TimeoutError("API call timeouted")
         HttpClient.check_status_code(resp.status_code, resp.text)
         # this is a defense against OCWB API responses containing an empty body!
         try:
@@ -302,11 +430,11 @@ class HttpClient:
         if status_code == 400 or status_code not in [401, 404, 502]:
             raise exceptions.APIRequestError(payload)
         elif status_code == 401:
-            raise exceptions.UnauthorizedError('Invalid API Key provided')
+            raise exceptions.UnauthorizedError("Invalid API Key provided")
         elif status_code == 404:
-            raise exceptions.NotFoundError('Unable to find the resource')
+            raise exceptions.NotFoundError("Unable to find the resource")
         else:
-            raise exceptions.BadGatewayError('Unable to contact the upstream server')
+            raise exceptions.BadGatewayError("Unable to contact the upstream server")
 
     def __repr__(self):
         return "<%s.%s - root: %s>" % (__name__, self.__class__.__name__, self.root_uri)
