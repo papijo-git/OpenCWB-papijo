@@ -183,7 +183,6 @@ class HttpClient:
         if "connection" in self.config:
             self.config["connection"]["verify_ssl_certs"] = True
         # --end
-
         assert isinstance(root_uri, str)
         self.root_uri = root_uri
         assert isinstance(admits_subdomains, bool)
