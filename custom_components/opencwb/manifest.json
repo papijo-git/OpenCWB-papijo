@@ -1,6 +1,6 @@
 {
   "domain": "opencwb",
-  "name": "OpenCWA",
+  "name": "OpenCWA(Papijo)",
   "config_flow": true,
   "version": "1.2.2",
   "documentation": "https://opendata.cwa.gov.tw/devManual/insrtuction",
